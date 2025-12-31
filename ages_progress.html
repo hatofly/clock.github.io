@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>Time Progress</title>
+<style>
+    body {
+        background: #000;
+        color: #fff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 40px;
+    }
+
+    .row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 28px;
+    }
+
+    .label {
+        width: 140px;
+        font-size: 28px;
+        white-space: nowrap;
+    }
+
+    .bar-container {
+        flex: 1;
+        height: 34px;
+        border: 2px solid #fff;
+        margin: 0 20px;
+        position: relative;
+    }
+
+    .bar {
+        height: 100%;
+        background: #fff;
+        width: 0%;
+    }
+
+    .percent {
+        width: 80px;
+        font-size: 28px;
+        text-align: right;
+    }
+</style>
+</head>
+<body>
+
+<div class="row">
+    <div class="label" id="year-label">year:</div>
+    <div class="bar-container">
+        <div class="bar" id="year-bar"></div>
+    </div>
+    <div class="percent" id="year-pct"></div>
+</div>
+
+<div class="row">
+    <div class="label" id="week-label">week:</div>
+    <div class="bar-container">
+        <div class="bar" id="week-bar"></div>
+    </div>
+    <div class="percent" id="week-pct"></div>
+</div>
+
+<div class="row">
+    <div class="label" id="day-label">day:</div>
+    <div class="bar-container">
+        <div class="bar" id="day-bar"></div>
+    </div>
+    <div class="percent" id="day-pct"></div>
+</div>
+
+<script>
+function update() {
+    const now = new Date();
+
+    /* ---------- Year ---------- */
+    const year = now.getFullYear();
+    const yearStart = new Date(year, 0, 1, 0, 0, 0);
+    const yearEnd = new Date(year + 1, 0, 1, 0, 0, 0);
+    const yearProgress = (now - yearStart) / (yearEnd - yearStart);
+
+    document.getElementById("year-label").textContent = `year: ${year}`;
+    document.getElementById("year-bar").style.width = `${yearProgress * 100}%`;
+    document.getElementById("year-pct").textContent = `${(yearProgress * 100).toFixed(1)}%`;
+
+    /* ---------- Week (Mon start) ---------- */
+    const day = now.getDay(); // 0=Sun
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() + diffToMonday);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    const weekProgress = (now - weekStart) / (weekEnd - weekStart);
+
+    const weekNumber = getWeekNumber(now);
+
+    document.getElementById("week-label").textContent = `week: ${weekNumber}th`;
+    document.getElementById("week-bar").style.width = `${weekProgress * 100}%`;
+    document.getElementById("week-pct").textContent = `${(weekProgress * 100).toFixed(1)}%`;
+
+    /* ---------- Day ---------- */
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayStart.getDate() + 1);
+
+    const dayProgress = (now - dayStart) / (dayEnd - dayStart);
+
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+
+    document.getElementById("day-label").textContent = `day: ${mm}/${dd}`;
+    document.getElementById("day-bar").style.width = `${dayProgress * 100}%`;
+    document.getElementById("day-pct").textContent = `${(dayProgress * 100).toFixed(1)}%`;
+}
+
+/* ローカルタイム準拠の週番号 ISO標準とはちょっと違うが別にそこは気にしてないんで... */
+function getWeekNumber(date) {
+    const year = date.getFullYear();
+
+    // その年の1/1
+    const jan1 = new Date(year, 0, 1);
+    jan1.setHours(0, 0, 0, 0);
+
+    // 月曜始まり（0=Sun → 6）
+    const jan1Day = jan1.getDay();
+    const diffToMonday = (jan1Day === 0 ? -6 : 1) - jan1Day;
+
+    // 第1週の開始（月曜）
+    const firstWeekStart = new Date(jan1);
+    firstWeekStart.setDate(jan1.getDate() + diffToMonday);
+
+    // 現在の週の開始
+    const now = new Date(date);
+    const nowDay = now.getDay();
+    const diffNowToMonday = (nowDay === 0 ? -6 : 1) - nowDay;
+    const currentWeekStart = new Date(now);
+    currentWeekStart.setDate(now.getDate() + diffNowToMonday);
+    currentWeekStart.setHours(0, 0, 0, 0);
+
+    const weekIndex =
+        Math.floor((currentWeekStart - firstWeekStart) / (7 * 24 * 60 * 60 * 1000));
+
+    return weekIndex + 1;
+}
+
+
+update();
+setInterval(update, 60 * 1000);
+</script>
+
+</body>
+</html>
