@@ -1,72 +1,190 @@
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>digital-clock</title>
+
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
         body {
-            font-family: 'Menlo', monospace; /* 全体をMenloフォントに変更 */
+            font-family: Menlo, monospace;
+            background-color: #000;
+            color: #fff;
+
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            flex-direction: column; /* 日付を時計の上に配置 */
-            height: 100vh;
-            margin: 0;
-            background-color: #000; /* 黒い背景 */
+
+            /* 極端な縦横比でも余白を確保 */
+            padding: 2%;
+            gap: 0.5em;
         }
+
+        #date, #clock {
+            flex: 0 1 auto;
+            min-width: 0;
+            min-height: 0;
+            max-width: 100%;
+            max-height: 100%;
+
+            text-align: center;
+            white-space: nowrap;
+            line-height: 1.1;
+
+            /* フォントサイズはJSで計算 */
+            font-size: 1px;
+            letter-spacing: 0;
+        }
+
         #date {
-            font-size: 4vw; /* 日付のフォントサイズを時計の半分に設定 */
-            color: #fff;
-            font-family: 'Menlo', monospace; /* Menloフォントを適用 */
-            margin-bottom: 1vw;
+            flex-shrink: 1;
         }
+
         #clock {
-            font-size: 10vw; /* 時計のフォントサイズを設定 */
-            color: #fff;
-            font-family: 'Menlo', monospace; /* Menloフォントを適用 */
-            letter-spacing: 1vw; /* 文字の間隔もビュー幅に基づいて調整 */
-            width: 90vw; /* 幅を90%に設定 */
-            text-align: center; /* テキストを中央揃え */
-            white-space: nowrap; /* テキストが折り返されないように */
+            flex-shrink: 1;
         }
     </style>
 </head>
 <body>
 
-<div id="date">0000/00/00 Err</div>
+<div id="date">0000/00/00 Wed</div>
 <div id="clock">00:00:00.00</div>
 
 <script>
+    const dateElement = document.getElementById('date');
+    const clockElement = document.getElementById('clock');
+
     function updateClock() {
         const now = new Date();
 
-        // 日付を0埋めで取得
         const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0'); // 月は0が1月なので+1
+        const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
 
-        // 曜日を取得
         const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const dayOfWeek = weekdays[now.getDay()];
 
-        // 時刻を0埋めで取得
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const seconds = String(now.getSeconds()).padStart(2, '0');
-        const milliseconds = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0'); // 10ms単位に変換して0埋め
+        const milliseconds = String(
+            Math.floor(now.getMilliseconds() / 10)
+        ).padStart(2, '0');
 
-        // 日付と時刻の文字列を作成
-        const dateString = `${year}/${month}/${day} ${dayOfWeek}`;
-        const timeString = `${hours}:${minutes}:${seconds}.${milliseconds}`;
+        dateElement.textContent =
+            `${year}/${month}/${day} ${dayOfWeek}`;
 
-        // HTMLに反映
-        document.getElementById('date').textContent = dateString;
-        document.getElementById('clock').textContent = timeString;
+        clockElement.textContent =
+            `${hours}:${minutes}:${seconds}.${milliseconds}`;
     }
 
-    setInterval(updateClock, 10);  // 10ミリ秒ごとに更新
+    function fitText(element, maxWidth, maxHeight) {
+        // 実際の文字列を指定サイズで測定し、
+        // 幅と高さの両方に収まる最大サイズを二分探索する。
+        const text = element.textContent;
+        const style = getComputedStyle(element);
+        const fontFamily = style.fontFamily;
+        const weight = style.fontWeight;
+        const letterSpacing = 0;
+
+        const canvas = fitText.canvas ||
+            (fitText.canvas = document.createElement('canvas'));
+        const context = canvas.getContext('2d');
+
+        let low = 0;
+        let high = Math.max(1, maxHeight);
+        let best = 0;
+
+        for (let i = 0; i < 24; i++) {
+            const mid = (low + high) / 2;
+
+            context.font = `${weight} ${mid}px ${fontFamily}`;
+            const metrics = context.measureText(text);
+
+            const width =
+                metrics.width +
+                Math.max(0, text.length - 1) * letterSpacing;
+
+            const actualHeight =
+                (metrics.actualBoundingBoxAscent || mid * 0.8) +
+                (metrics.actualBoundingBoxDescent || mid * 0.2);
+
+            if (width <= maxWidth && actualHeight <= maxHeight) {
+                best = mid;
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+
+        element.style.fontSize = `${best}px`;
+    }
+
+    function resizeText() {
+        const bodyStyle = getComputedStyle(document.body);
+
+        const paddingX =
+            parseFloat(bodyStyle.paddingLeft) +
+            parseFloat(bodyStyle.paddingRight);
+
+        const paddingY =
+            parseFloat(bodyStyle.paddingTop) +
+            parseFloat(bodyStyle.paddingBottom);
+
+        const availableWidth = Math.max(
+            0, document.documentElement.clientWidth - paddingX
+        );
+
+        const availableHeight = Math.max(
+            0, document.documentElement.clientHeight - paddingY
+        );
+
+        // 2行分の高さと間隔を確保する。
+        // 各行の最大高さを画面高さの半分以下に制限する。
+        const gap = Math.min(
+            parseFloat(bodyStyle.fontSize) * 0.5,
+            availableHeight * 0.02
+        );
+
+        document.body.style.gap = `${gap}px`;
+
+        const lineHeightRatio = 1.1;
+        const maxLineHeight = Math.max(
+            0, (availableHeight - gap) / 2
+        );
+
+        fitText(dateElement, availableWidth, maxLineHeight / lineHeightRatio);
+        fitText(clockElement, availableWidth, maxLineHeight / lineHeightRatio);
+    }
+
+    function render() {
+        updateClock();
+        resizeText();
+    }
+
+    // iframeのサイズ変更も検知する
+    const resizeObserver = new ResizeObserver(resizeText);
+    resizeObserver.observe(document.documentElement);
+
+    window.addEventListener('resize', resizeText);
+
+    render();
+    setInterval(render, 10);
 </script>
 
 </body>
 </html>
+```
